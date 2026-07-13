@@ -1,175 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MAKEROBOT GAMEPAD</title>
+
+<style>
+/* your CSS here */
+</style>
+
+</head>
+
+<body>
+
+<h1>MAKEROBOT GAMEPAD</h1>
+
+<button id="connect">Connect</button>
+
+<button id="btn-up">↑</button>
+<button id="btn-down">↓</button>
+<button id="btn-left">←</button>
+<button id="btn-right">→</button>
+
+<button id="btn-a">A</button>
+<button id="btn-b">B</button>
+
+
+<script>
+
+// YOUR JAVASCRIPT STARTS HERE
+
 let device, characteristic;
 
-const UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-const UART_RX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+// rest of your JavaScript code
 
-let activeIntervals = {};
-let activeKeys = {};
+// YOUR JAVASCRIPT ENDS HERE
 
-async function connect() {
-  try {
-    device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: "BBC micro:bit" }],
-      optionalServices: [UART_SERVICE]
-    });
+</script>
 
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService(UART_SERVICE);
-    characteristic = await service.getCharacteristic(UART_RX);
-
-    alert("Connected!");
-  } catch (err) {
-    console.error(err);
-    alert("Connection failed");
-  }
-}
-
-document.getElementById("connect").onclick = connect;
-
-function highlight(id, state) {
-  const btn = document.getElementById(id);
-  if (!btn) return;
-
-  if (state)
-    btn.classList.add("active");
-  else
-    btn.classList.remove("active");
-}
-
-function send(command) {
-  if (!characteristic) return;
-
-  const encoder = new TextEncoder();
-  characteristic.writeValueWithoutResponse(
-    encoder.encode(command + "\n")
-  );
-}
-
-//==============================
-// Hold button
-//==============================
-function startHold(command, id) {
-
-  if (activeIntervals[id]) return;
-
-  highlight(id, true);
-
-  // Send immediately
-  send(command);
-
-  activeIntervals[id] = setInterval(() => {
-    send(command);
-  }, 100);
-}
-
-//==============================
-// Release button
-//==============================
-function stopHold(id) {
-
-  highlight(id, false);
-
-  if (activeIntervals[id]) {
-    clearInterval(activeIntervals[id]);
-    delete activeIntervals[id];
-  }
-
-  // Send STOP once
-  send("S");
-}
-
-window.onload = () => {
-
-  const controls = {
-    "btn-up": "UP",
-    "btn-down": "DOWN",
-    "btn-left": "LEFT",
-    "btn-right": "RIGHT",
-    "btn-a": "A",
-    "btn-b": "B"
-  };
-
-  Object.keys(controls).forEach(id => {
-
-    const el = document.getElementById(id);
-
-    // Mouse
-    el.addEventListener("mousedown", () => startHold(controls[id], id));
-    el.addEventListener("mouseup", () => stopHold(id));
-    el.addEventListener("mouseleave", () => stopHold(id));
-
-    // Touch
-    el.addEventListener("touchstart", e => {
-      e.preventDefault();
-      startHold(controls[id], id);
-    });
-
-    el.addEventListener("touchend", () => stopHold(id));
-    el.addEventListener("touchcancel", () => stopHold(id));
-  });
-
-};
-
-//==============================
-// Keyboard
-//==============================
-const keyboardMap = {
-  ArrowUp: {
-    button: "btn-up",
-    command: "UP"
-  },
-  ArrowDown: {
-    button: "btn-down",
-    command: "DOWN"
-  },
-  ArrowLeft: {
-    button: "btn-left",
-    command: "LEFT"
-  },
-  ArrowRight: {
-    button: "btn-right",
-    command: "RIGHT"
-  },
-  a: {
-    button: "btn-a",
-    command: "A"
-  },
-  A: {
-    button: "btn-a",
-    command: "A"
-  },
-  b: {
-    button: "btn-b",
-    command: "B"
-  },
-  B: {
-    button: "btn-b",
-    command: "B"
-  }
-};
-
-window.addEventListener("keydown", e => {
-
-  if (activeKeys[e.key]) return;
-
-  activeKeys[e.key] = true;
-
-  const item = keyboardMap[e.key];
-
-  if (item) {
-    startHold(item.command, item.button);
-  }
-
-});
-
-window.addEventListener("keyup", e => {
-
-  activeKeys[e.key] = false;
-
-  const item = keyboardMap[e.key];
-
-  if (item) {
-    stopHold(item.button);
-  }
-
-});
+</body>
+</html>
