@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Microbit Web Gamepad</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #111;
+    color: white;
+  }
+  button {
+    width: 80px;
+    height: 80px;
+    margin: 10px;
+    font-size: 20px;
+    border-radius: 10px;
+    border: none;
+    background: #333;
+    color: white;
+  }
+  .row {
+    display: flex;
+    justify-content: center;
+  }
+  #connect {
+    background: green;
+    width: 200px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Microbit Gamepad</h1>
+<button id="connect">Connect</button>
+
+<div class="row">
+  <button onclick="send('UP')">↑</button>
+</div>
+<div class="row">
+  <button onclick="send('LEFT')">←</button>
+  <button onclick="send('DOWN')">↓</button>
+  <button onclick="send('RIGHT')">→</button>
+</div>
+<div class="row">
+  <button onclick="send('A')">A</button>
+  <button onclick="send('B')">B</button>
+</div>
+
+<script>
+let device, characteristic;
+
+const UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const UART_TX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+
+async function connect() {
+  device = await navigator.bluetooth.requestDevice({
+    filters: [{ namePrefix: "BBC micro:bit" }],
+    optionalServices: [UART_SERVICE]
+  });
+
+  const server = await device.gatt.connect();
+  const service = await server.getPrimaryService(UART_SERVICE);
+  characteristic = await service.getCharacteristic(UART_TX);
+
+  alert("Connected!");
+}
+
+document.getElementById('connect').onclick = connect;
+
+function send(command) {
+  if (!characteristic) {
+    alert("Not connected");
+    return;
+  }
+  const encoder = new TextEncoder();
+  characteristic.writeValue(encoder.encode(command + "\n"));
+}
+</script>
+
+</body>
+</html>
+
+<!-- ================= MICRO:BIT CODE (MakeCode JavaScript) =================
+
+bluetooth.startUartService();
+
+bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
+    let msg = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine));
+
+    if (msg == "UP") {
+        basic.showArrow(ArrowNames.North);
+    } else if (msg == "DOWN") {
+        basic.showArrow(ArrowNames.South);
+    } else if (msg == "LEFT") {
+        basic.showArrow(ArrowNames.West);
+    } else if (msg == "RIGHT") {
+        basic.showArrow(ArrowNames.East);
+    } else if (msg == "A") {
+        basic.showString("A");
+    } else if (msg == "B") {
+        basic.showString("B");
+    }
+});
+
+========================================================================== -->
