@@ -2,12 +2,59 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>MAKEROBOT GAMEPAD</title>
 
 <style>
-/* your CSS here */
-</style>
 
+body{
+    margin:0;
+    padding:20px;
+    font-family:Arial,Helvetica,sans-serif;
+    background:#111;
+    color:white;
+    text-align:center;
+}
+
+h1{
+    margin-bottom:20px;
+}
+
+button{
+    width:90px;
+    height:90px;
+    margin:8px;
+    font-size:30px;
+    border:none;
+    border-radius:12px;
+    background:#333;
+    color:white;
+    cursor:pointer;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:none;
+    transition:0.1s;
+}
+
+button.active{
+    background:#ff4444;
+    transform:scale(0.95);
+}
+
+.row{
+    display:flex;
+    justify-content:center;
+}
+
+#connect{
+    width:220px;
+    background:#009933;
+    font-size:22px;
+    margin-bottom:20px;
+}
+
+</style>
 </head>
 
 <body>
@@ -16,24 +63,241 @@
 
 <button id="connect">Connect</button>
 
-<button id="btn-up">↑</button>
-<button id="btn-down">↓</button>
-<button id="btn-left">←</button>
-<button id="btn-right">→</button>
+<div class="row">
+    <button id="btn-up">↑</button>
+</div>
 
-<button id="btn-a">A</button>
-<button id="btn-b">B</button>
+<div class="row">
+    <button id="btn-left">←</button>
+    <button id="btn-down">↓</button>
+    <button id="btn-right">→</button>
+</div>
 
+<div class="row">
+    <button id="btn-a">A</button>
+    <button id="btn-b">B</button>
+</div>
 
 <script>
 
-// YOUR JAVASCRIPT STARTS HERE
+let device;
+let characteristic;
 
-let device, characteristic;
+const UART_SERVICE="6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const UART_RX="6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
-// rest of your JavaScript code
+const intervals={};
+const keys={};
 
-// YOUR JAVASCRIPT ENDS HERE
+async function connect(){
+
+    try{
+
+        device=await navigator.bluetooth.requestDevice({
+
+            filters:[
+                {namePrefix:"BBC micro:bit"}
+            ],
+
+            optionalServices:[
+                UART_SERVICE
+            ]
+
+        });
+
+        const server=await device.gatt.connect();
+
+        const service=await server.getPrimaryService(UART_SERVICE);
+
+        characteristic=await service.getCharacteristic(UART_RX);
+
+        alert("Connected");
+
+    }
+    catch(err){
+
+        console.error(err);
+        alert("Connection failed");
+
+    }
+
+}
+
+document.getElementById("connect").onclick=connect;
+
+function send(cmd){
+
+    if(!characteristic) return;
+
+    const encoder=new TextEncoder();
+
+    characteristic.writeValueWithoutResponse(
+        encoder.encode(cmd+"\n")
+    );
+
+}
+
+function highlight(id,on){
+
+    const b=document.getElementById(id);
+
+    if(!b) return;
+
+    if(on)
+        b.classList.add("active");
+    else
+        b.classList.remove("active");
+
+}
+
+function startHold(command,id){
+
+    if(intervals[id]) return;
+
+    highlight(id,true);
+
+    send(command);
+
+    intervals[id]=setInterval(()=>{
+
+        send(command);
+
+    },100);
+
+}
+
+function stopHold(id){
+
+    highlight(id,false);
+
+    if(intervals[id]){
+
+        clearInterval(intervals[id]);
+
+        delete intervals[id];
+
+    }
+
+    send("S");
+
+}
+
+const controls={
+
+    "btn-up":"UP",
+    "btn-down":"DOWN",
+    "btn-left":"LEFT",
+    "btn-right":"RIGHT",
+    "btn-a":"A",
+    "btn-b":"B"
+
+};
+
+Object.keys(controls).forEach(id=>{
+
+    const btn=document.getElementById(id);
+
+    btn.addEventListener("pointerdown",e=>{
+
+        e.preventDefault();
+
+        startHold(controls[id],id);
+
+    });
+
+    btn.addEventListener("pointerup",()=>{
+
+        stopHold(id);
+
+    });
+
+    btn.addEventListener("pointercancel",()=>{
+
+        stopHold(id);
+
+    });
+
+    btn.addEventListener("pointerleave",()=>{
+
+        stopHold(id);
+
+    });
+
+});
+
+const keyboard={
+
+ArrowUp:{
+button:"btn-up",
+command:"UP"
+},
+
+ArrowDown:{
+button:"btn-down",
+command:"DOWN"
+},
+
+ArrowLeft:{
+button:"btn-left",
+command:"LEFT"
+},
+
+ArrowRight:{
+button:"btn-right",
+command:"RIGHT"
+},
+
+a:{
+button:"btn-a",
+command:"A"
+},
+
+A:{
+button:"btn-a",
+command:"A"
+},
+
+b:{
+button:"btn-b",
+command:"B"
+},
+
+B:{
+button:"btn-b",
+command:"B"
+}
+
+};
+
+window.addEventListener("keydown",e=>{
+
+    if(keys[e.key]) return;
+
+    keys[e.key]=true;
+
+    const item=keyboard[e.key];
+
+    if(item){
+
+        startHold(item.command,item.button);
+
+    }
+
+});
+
+window.addEventListener("keyup",e=>{
+
+    keys[e.key]=false;
+
+    const item=keyboard[e.key];
+
+    if(item){
+
+        stopHold(item.button);
+
+    }
+
+});
 
 </script>
 
