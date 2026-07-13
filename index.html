@@ -1,3 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAKEROBOT Gamepad</title>
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #111;
+    color: white;
+  }
+  button {
+    width: 80px;
+    height: 80px;
+    margin: 10px;
+    font-size: 20px;
+    border-radius: 10px;
+    border: none;
+    background: #333;
+    color: white;
+    transition: transform 0.05s, background 0.1s;
+  }
+  button:active, .active {
+    background: #ff4444 !important;
+    transform: scale(0.95);
+  }
+  .row {
+    display: flex;
+    justify-content: center;
+  }
+  #connect {
+    background: green;
+    width: 200px;
+  }
+</style>
+</head>
+
+<body>
+
+<h1>MAKEROBOT GAMEPAD</h1>
+<button id="connect">Connect</button>
+
+<div class="row">
+  <button id="btn-up">↑</button>
+</div>
+
+<div class="row">
+  <button id="btn-left">←</button>
+  <button id="btn-down">↓</button>
+  <button id="btn-right">→</button>
+</div>
+
+<div class="row">
+  <button id="btn-a">A</button>
+  <button id="btn-b">B</button>
+</div>
+
+<script>
 let device, characteristic;
 
 const UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
@@ -24,16 +85,14 @@ async function connect() {
   }
 }
 
-document.getElementById("connect").onclick = connect;
+document.getElementById('connect').onclick = connect;
 
 function highlight(id, state) {
   const btn = document.getElementById(id);
   if (!btn) return;
 
-  if (state)
-    btn.classList.add("active");
-  else
-    btn.classList.remove("active");
+  if (state) btn.classList.add('active');
+  else btn.classList.remove('active');
 }
 
 function send(command) {
@@ -45,28 +104,19 @@ function send(command) {
   );
 }
 
-//==============================
-// Hold button
-//==============================
-function startHold(command, id) {
-
+// HOLD movement
+function startMove(command, id) {
   if (activeIntervals[id]) return;
 
   highlight(id, true);
-
-  // Send immediately
-  send(command);
 
   activeIntervals[id] = setInterval(() => {
     send(command);
   }, 100);
 }
 
-//==============================
-// Release button
-//==============================
-function stopHold(id) {
-
+// RELEASE → STOP
+function stopMove(id) {
   highlight(id, false);
 
   if (activeIntervals[id]) {
@@ -74,102 +124,110 @@ function stopHold(id) {
     delete activeIntervals[id];
   }
 
-  // Send STOP once
-  send("S");
+  send("S"); // 🔥 immediate STOP
 }
 
 window.onload = () => {
 
-  const controls = {
-    "btn-up": "UP",
-    "btn-down": "DOWN",
-    "btn-left": "LEFT",
-    "btn-right": "RIGHT",
-    "btn-a": "A",
-    "btn-b": "B"
+  // MOVEMENT (HOLD)
+  const moveMap = {
+    'btn-up': 'UP',
+    'btn-down': 'DOWN',
+    'btn-left': 'LEFT',
+    'btn-right': 'RIGHT'
   };
 
-  Object.keys(controls).forEach(id => {
-
+  Object.keys(moveMap).forEach(id => {
     const el = document.getElementById(id);
 
     // Mouse
-    el.addEventListener("mousedown", () => startHold(controls[id], id));
-    el.addEventListener("mouseup", () => stopHold(id));
-    el.addEventListener("mouseleave", () => stopHold(id));
+    el.addEventListener('mousedown', () => startMove(moveMap[id], id));
+    el.addEventListener('mouseup', () => stopMove(id));
+    el.addEventListener('mouseleave', () => stopMove(id));
 
     // Touch
-    el.addEventListener("touchstart", e => {
+    el.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      startHold(controls[id], id);
+      startMove(moveMap[id], id);
     });
-
-    el.addEventListener("touchend", () => stopHold(id));
-    el.addEventListener("touchcancel", () => stopHold(id));
+    el.addEventListener('touchend', () => stopMove(id));
+    el.addEventListener('touchcancel', () => stopMove(id));
   });
 
+  // A/B buttons (single press)
+  const clickMap = {
+    'btn-a': 'A',
+    'btn-b': 'B'
+  };
+
+  Object.keys(clickMap).forEach(id => {
+    const el = document.getElementById(id);
+
+    el.addEventListener('mousedown', () => {
+      highlight(id, true);
+      send(clickMap[id]);
+    });
+
+    el.addEventListener('mouseup', () => highlight(id, false));
+    el.addEventListener('mouseleave', () => highlight(id, false));
+
+    el.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      highlight(id, true);
+      send(clickMap[id]);
+    });
+
+    el.addEventListener('touchend', () => highlight(id, false));
+    el.addEventListener('touchcancel', () => highlight(id, false));
+  });
 };
 
-//==============================
-// Keyboard
-//==============================
-const keyboardMap = {
-  ArrowUp: {
-    button: "btn-up",
-    command: "UP"
-  },
-  ArrowDown: {
-    button: "btn-down",
-    command: "DOWN"
-  },
-  ArrowLeft: {
-    button: "btn-left",
-    command: "LEFT"
-  },
-  ArrowRight: {
-    button: "btn-right",
-    command: "RIGHT"
-  },
-  a: {
-    button: "btn-a",
-    command: "A"
-  },
-  A: {
-    button: "btn-a",
-    command: "A"
-  },
-  b: {
-    button: "btn-b",
-    command: "B"
-  },
-  B: {
-    button: "btn-b",
-    command: "B"
-  }
-};
-
-window.addEventListener("keydown", e => {
-
+// KEYBOARD
+window.addEventListener('keydown', (e) => {
   if (activeKeys[e.key]) return;
-
   activeKeys[e.key] = true;
 
-  const item = keyboardMap[e.key];
+  switch(e.key) {
+    case 'ArrowUp': startMove('UP','btn-up'); break;
+    case 'ArrowDown': startMove('DOWN','btn-down'); break;
+    case 'ArrowLeft': startMove('LEFT','btn-left'); break;
+    case 'ArrowRight': startMove('RIGHT','btn-right'); break;
 
-  if (item) {
-    startHold(item.command, item.button);
+    case 'a':
+    case 'A':
+      highlight('btn-a', true);
+      send('A');
+      break;
+
+    case 'b':
+    case 'B':
+      highlight('btn-b', true);
+      send('B');
+      break;
   }
-
 });
 
-window.addEventListener("keyup", e => {
-
+window.addEventListener('keyup', (e) => {
   activeKeys[e.key] = false;
 
-  const item = keyboardMap[e.key];
+  switch(e.key) {
+    case 'ArrowUp': stopMove('btn-up'); break;
+    case 'ArrowDown': stopMove('btn-down'); break;
+    case 'ArrowLeft': stopMove('btn-left'); break;
+    case 'ArrowRight': stopMove('btn-right'); break;
 
-  if (item) {
-    stopHold(item.button);
+    case 'a':
+    case 'A':
+      highlight('btn-a', false);
+      break;
+
+    case 'b':
+    case 'B':
+      highlight('btn-b', false);
+      break;
   }
-
 });
+</script>
+
+</body>
+</html>
